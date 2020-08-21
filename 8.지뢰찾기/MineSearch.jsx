@@ -6,7 +6,7 @@ export const CODE = {
     MINE: -7, // 지뢰
     NORMAL: -1, // 일반 칸
     QUESTION: -2, // 물음표
-    FLAG :-3, // 깃발
+    FLAG: -3, // 깃발
     QUESTION_MINE: -4, // 물음표 칸이 지뢰인 경우
     FLAG_MINE: -5, // 깃발 칸이 지뢰인 경우
     CLICKED_MINE: -6, // 지뢰 클릭
@@ -15,6 +15,7 @@ export const CODE = {
 
 export const TableContext = createContext({ // 초깃값 설정
     tableData: [],
+    halted: true,
     dispatch: () => { },
 });
 
@@ -22,6 +23,7 @@ const initialState = {
     tableData: [],
     timer: 0,
     result: '',
+    halted: true,
 };
 
 const plantMine = (row, cell, mine) => {
@@ -30,7 +32,7 @@ const plantMine = (row, cell, mine) => {
         return i;
     });
     const shuffle = [];
-    while(candidate.length > row * cell - mine) {
+    while (candidate.length > row * cell - mine) {
         const chosen = candidate.splice(Math.floor(Math.random() * candidate.length), 1)[0];
         shuffle.push(chosen); // 랜덤으로 뽑은 20개 숫자들을 shuffle 배열에 넣기
     }
@@ -54,14 +56,77 @@ const plantMine = (row, cell, mine) => {
 };
 
 export const START_GAME = 'START_GAME';
+export const OPEN_CELL = 'OPEN_CELL';
+export const CLICK_MINE = 'CLICK_MINE';
+export const FLAG_CELL = 'FLAG_CELL';
+export const QUESTION_CELL = 'QUESTION_CELL';
+export const NORMALIZE_CELL = 'NORMALIZE_CELL';
 
 const reducer = (state, action) => {
     switch (action.type) {
-        case START_GAME: 
-        return {
-            ...state,
-            tableData: plantMine(action.row, action.cell, action.mine)
-        };
+        case START_GAME:
+            return {
+                ...state,
+                tableData: plantMine(action.row, action.cell, action.mine),
+                halted: false,
+            };
+        case OPEN_CELL: {
+            const tableData = [...state.tableData];
+            tableData[action.row] = [...state.tableData[action.row]];
+            tableData[action.row][action.cell] = CODE.OPENED; // 클릭한 칸을 OPENED으로 바꾸기
+            return {
+                ...state,
+                tableData,
+            };
+        }
+        case CLICK_MINE: {
+            const tableData = [...state.tableData];
+            tableData[action.row] = [...state.tableData[action.row]];
+            tableData[action.row][action.cell] = CODE.CLICKED_MINE;
+            return {
+                ...state,
+                tableData,
+                halted: true,
+            };
+        }
+        case FLAG_CELL:
+            const tableData = [...state.tableData];
+            tableData[action.row] = [...state.tableData[action.row]];
+            if (tableData[action.row][action.cell] === CODE.MINE) {
+                tableData[action.row][action.cell] = CODE.FLAG_MINE;
+            } else {
+                tableData[action.row][action.cell] = CODE.FLAG;
+            }
+            return {
+                ...state,
+                tableData,
+            };
+        case QUESTION_CELL: {
+            const tableData = [...state.tableData];
+            tableData[action.row] = [...state.tableData[action.row]];
+            if (tableData[action.row][action.cell] === CODE.FLAG_MINE) {
+                tableData[action.row][action.cell] = CODE.QUESTION_MINE;
+            } else {
+                tableData[action.row][action.cell] = CODE.QUESTION;
+            }
+            return {
+                ...state,
+                tableData,
+            };
+        }
+        case NORMALIZE_CELL: {
+            const tableData = [...state.tableData];
+            tableData[action.row] = [...state.tableData[action.row]];
+            if (tableData[action.row][action.cell] === CODE.FLAG_MINE) {
+                tableData[action.row][action.cell] = CODE.MINE;
+            } else {
+                tableData[action.row][action.cell] = CODE.NORMAL;
+            }
+            return {
+                ...state,
+                tableData,
+            };
+        }
         default:
             return state;
     }
@@ -69,14 +134,15 @@ const reducer = (state, action) => {
 
 const MineSearch = () => {
     const [state, dispatch] = useReducer(reducer, initialState);
-    const value = useMemo(() => ({ tableData: state.tableData, dispatch }), [state.tableData]); // tableData값이 바뀔 때 갱신
+    const { tableData, halted, timer, result } = state;
+    const value = useMemo(() => ({ tableData: tableData, halted: halted, dispatch }), [tableData, halted]); // tableData값이 바뀔 때 갱신
 
     return (
         <TableContext.Provider value={value}>
             <Form />
-            <div>{state.timer}</div>
+            <div>{timer}</div>
             <Table />
-            <div>{state.result}</div>
+            <div>{result}</div>
         </TableContext.Provider>
     );
 };
