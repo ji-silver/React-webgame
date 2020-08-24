@@ -45,7 +45,7 @@ const getTdText = (code) => {
         case CODE.QUESTION:
             return '?';
         default:
-            return '';
+            return code || '';
     }
 };
 
@@ -72,7 +72,7 @@ const Td = ({ rowIndex, cellIndex }) => {
             default:
                 return;
         }
-    }, [tableData[rowIndex][cellIndex], halted]);
+    }, [tableData[rowIndex][cellIndex], halted]); // 바뀌는 부분은 두번째 인자에 넣어주기
 
     const onRightClickTd = useCallback((e) => {
         e.preventDefault(); // 우클릭 시 나오는 메뉴 안 뜨게 하기
